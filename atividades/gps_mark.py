@@ -70,13 +70,12 @@ class GPSMarker:
         magnetic_heading = np.degrees(magnetic_heading)
         
         true_heading = magnetic_heading + self.magnetic_declination + self.new_angle
-        print(self.new_angle)
-        print(true_heading)
+        
+        print(f"Angulo em relacao ao norte: {true_heading}º")
         theta = np.deg2rad(true_heading)
         delta_x = self.distance * np.sin(theta)
         delta_y = self.distance * np.cos(theta)
-        print(delta_x, delta_y)
-
+     
         delta_latitude = delta_y / 118320
         delta_longitude = delta_x / (118320 * np.cos(np.deg2rad(gps_coords[1])))
         
