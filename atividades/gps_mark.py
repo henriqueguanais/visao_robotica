@@ -66,17 +66,15 @@ class GPSMarker:
         imu_values = self.get_imu_values(imu_txt_path)
 
         # calcula o heading do barco, com base nos valores do imu
-        magnetic_heading = np.arctan2(imu_values[1], imu_values[0])
+        magnetic_heading = -np.arctan2(imu_values[1], imu_values[0])
         magnetic_heading = np.degrees(magnetic_heading)
-        print(magnetic_heading)
-        # normaliza o heading, para ficar entre [0, 360]
-        # if magnetic_heading < 0:
-        #     magnetic_heading = magnetic_heading + 360
+        
         true_heading = magnetic_heading + self.magnetic_declination + self.new_angle
+        print(self.new_angle)
         print(true_heading)
         theta = np.deg2rad(true_heading)
-        delta_x = self.distance * np.cos(theta)
-        delta_y = self.distance * np.sin(theta)
+        delta_x = self.distance * np.sin(theta)
+        delta_y = self.distance * np.cos(theta)
         print(delta_x, delta_y)
 
         delta_latitude = delta_y / 118320
