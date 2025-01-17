@@ -4,13 +4,44 @@ import matplotlib.pyplot as plt
 
 class DistanceMeter():
     """Classe que faz o mapa de disparidade de uma imagem estereo."""
-    def __init__(self, focal_length, baseline) -> None:
+    def __init__(self, focal_length:float, baseline:float) -> None:
+        """
+        Parâmetros:
+        -------------------
+        focal_length: float
+            Distância focal da câmera
+        baseline: float
+            Distância entre as duas câmeras
+        
+        Exemplo de uso:
+
+        >>> from measure_distance import DistanceMeter
+        >>> import cv2
+        >>> focal_length = 500
+        >>> baseline = 0.1
+        >>> stereo_method_file = 'stereo_params.yaml'
+        >>> imgL = cv2.imread('imgL.png')
+        >>> imgR = cv2.imread('imgR.png')
+        >>> x, y = 100, 100
+        >>> w, h = 50, 50
+        >>> distance_meter = DistanceMeter(focal_length, baseline)
+        >>> distance_meter.load_stereo_params(stereo_method_file)
+        >>> distance_meter.disparity_compute(imgL, imgR, (x, y), (w, h))
+        >>> distance_meter.plot_results(plot_extreme_points=False)
+        """
         self.focal_length = focal_length
         self.baseline = baseline
     
 
-    def load_stereo_params(self, stereo_method_file):
-        '''Carrega os parâmetros do método estéreo'''
+    def load_stereo_params(self, stereo_method_file:str) -> None:
+        '''
+        Carrega os parâmetros do método estéreo.
+
+        Parâmetros:
+        -------------------
+        stereo_method_file: str
+            Caminho do arquivo de parâmetros do método estéreo
+        '''
         cv_file = cv2.FileStorage(stereo_method_file, cv2.FILE_STORAGE_READ)
         if not cv_file.isOpened():
             print("Erro: Não foi possível abrir o arquivo de parâmetros estéreo.")
@@ -30,23 +61,38 @@ class DistanceMeter():
             cv_file.release()
 
         # Configurar StereoBM usando parâmetros carregados
-        self.stereo = cv2.StereoBM_create(
+        stereo = cv2.StereoBM_create(
             numDisparities=NumDisparities,
-            blockSize=SADWindowSize
+            blockSize=SADWindowSize,
         )
 
-        self.stereo.setPreFilterType(PreFilterType)
-        self.stereo.setPreFilterSize(PreFilterSize)
-        self.stereo.setPreFilterCap(PreFilterCap)
-        self.stereo.setTextureThreshold(TextureThreshold)
-        self.stereo.setUniquenessRatio(UniquenessRatio)
-        self.stereo.setSpeckleWindowSize(SpeckleWindowSize)
-        self.stereo.setSpeckleRange(SpeckleRange)
-        self.stereo.setDisp12MaxDiff(Disp12MaxDiff)
+        stereo.setPreFilterType(PreFilterType)
+        stereo.setPreFilterSize(PreFilterSize)
+        stereo.setPreFilterCap(PreFilterCap)
+        stereo.setTextureThreshold(TextureThreshold)
+        stereo.setUniquenessRatio(UniquenessRatio)
+        stereo.setSpeckleWindowSize(SpeckleWindowSize)
+        stereo.setSpeckleRange(SpeckleRange)
+        stereo.setDisp12MaxDiff(Disp12MaxDiff)
+
+        self.stereo = stereo
 
         
-    def disparity_compute(self, imgL, imgR, object_position, bb_size):
-        '''Calcula a disparidade e a profundidade de um objeto na imagem'''
+    def disparity_compute(self, imgL:np.ndarray, imgR:np.ndarray, object_position:tuple, bb_size:tuple) -> None:
+        '''
+        Calcula a disparidade e a profundidade de um objeto na imagem.
+
+        Parâmetros:
+        -------------------
+        imgL: np.ndarray
+            Imagem esquerda
+        imgR: np.ndarray
+            Imagem direita
+        object_position: tuple
+            Posição do objeto na imagem (x, y)
+        bb_size: tuple
+            Tamanho da bounding box do objeto (w, h)
+        '''
         self.x = object_position[0]
         self.y = object_position[1]
         self.w = bb_size[0]
@@ -86,38 +132,49 @@ class DistanceMeter():
         self.max_disparity_mask = (self.disparity_map == disparity_max)
 
 
-    def plot_results(self, plot_extreme_points=False):
-        """Plota os resultados do depth map"""
+    def plot_results(self, plot_extreme_points:bool = False) -> None:
+        """
+        Plota os resultados do depth map.
+
+        Parâmetros:
+        -------------------
+        plot_extreme_points: bool
+            Se True, plota os pontos de máxima e mínima disparidade.
+        """
+        disparity_plot = np.copy(self.disparity_normalize)
         if plot_extreme_points:
             # plota os pontos de maximo e minimo disparidade
             for y in range(self.disparity_map.shape[0]):
                 for x in range(self.disparity_map.shape[1]):
                     if self.min_disparity_mask[y, x]:
                         # pontos de minima disparidade (maxima distancia), com cor preta
-                        cv2.circle(self.disparity_normalize, (x, y), radius=5, color=(0, 0, 0), thickness=-1)
+                        cv2.circle(disparity_plot, (x, y), radius=5, color=(0, 0, 0), thickness=-1)
             for y in range(self.disparity_map.shape[0]):
                 for x in range(self.disparity_map.shape[1]):
                     if self.max_disparity_mask[y, x]:
                         # pontos de maxima disparidade (minima distancia), com cor branca
-                        cv2.circle(self.disparity_normalize, (x, y), radius=5, color=(255, 255, 255), thickness=-1)
+                        cv2.circle(disparity_plot, (x, y), radius=5, color=(255, 255, 255), thickness=-1)
+        
+        imgL_plot = np.copy(self.imgL)
+        imgR_plot = np.copy(self.imgR)
 
-        cv2.rectangle(self.imgL, (self.x, self.y), (self.x+self.w, self.y+self.h), (0, 0, 255), 3)
-        cv2.rectangle(self.imgR, (self.x, self.y), (self.x+self.w, self.y+self.h), (0, 0, 255), 3)
-        cv2.rectangle(self.disparity_normalize, (self.x, self.y), (self.x+self.w, self.y+self.h), (255, 255, 255), 3)
+        cv2.rectangle(imgL_plot, (self.x, self.y), (self.x+self.w, self.y+self.h), (0, 0, 255), 3)
+        cv2.rectangle(imgR_plot, (self.x, self.y), (self.x+self.w, self.y+self.h), (0, 0, 255), 3)
+        cv2.rectangle(disparity_plot, (self.x, self.y), (self.x+self.w, self.y+self.h), (255, 255, 255), 3)
 
         plt.figure(figsize=(16, 10))
         plt.subplot(131)
-        plt.imshow(cv2.cvtColor(self.imgL, cv2.COLOR_BGR2RGB))
+        plt.imshow(cv2.cvtColor(imgL_plot, cv2.COLOR_BGR2RGB))
         plt.title("Imagem Esquerda (L)")
         plt.axis('off')
 
         plt.subplot(132)
-        plt.imshow(self.imgR, cmap='gray')
+        plt.imshow(imgR_plot, cmap='gray')
         plt.title("Imagem Direita (R)")
         plt.axis('off')
 
         plt.subplot(133)
-        plt.imshow((cv2.cvtColor(self.disparity_normalize, cv2.COLOR_BGR2RGB)))
+        plt.imshow((cv2.cvtColor(disparity_plot, cv2.COLOR_BGR2RGB)))
         plt.title("Mapa de Disparidade")
         plt.text(10, 1000, f"Distância estimada na região é: {self.depth:.2f} metros", fontsize=12, color='blue')
         plt.text(10, 1100, f"Profundidade mínima: {self.depth_min:.2f} m", fontsize=12, color='blue')
